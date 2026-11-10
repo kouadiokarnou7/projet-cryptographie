@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="fr" class="h-full bg-slate-950 text-slate-100 antialiased selection:bg-brand-500/30 selection:text-brand-300">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aegis E2EE &middot; Application de Messagerie Chiffrée</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    :root {
+      --color-primary: #10b981;
+      --color-primary-hover: #059669;
+      --color-glow: rgba(16, 185, 129, 0.18);
+      --color-accent-from: #10b981;
+      --color-accent-to: #14b8a6;
+      --color-primary-text: #022c22;
+      --color-badge-bg: rgba(16, 185, 129, 0.12);
+      --color-badge-border: rgba(16, 185, 129, 0.25);
+    }
+    [data-theme="violet"] {
+      --color-primary: #8b5cf6;
+      --color-primary-hover: #7c3aed;
+      --color-glow: rgba(139, 92, 246, 0.20);
+      --color-accent-from: #8b5cf6;
+      --color-accent-to: #ec4899;
+      --color-primary-text: #2e1065;
+      --color-badge-bg: rgba(139, 92, 246, 0.12);
+      --color-badge-border: rgba(139, 92, 246, 0.25);
+    }
+    [data-theme="cyan"] {
+      --color-primary: #06b6d4;
+      --color-primary-hover: #0891b2;
+      --color-glow: rgba(6, 182, 212, 0.20);
+      --color-accent-from: #06b6d4;
+      --color-accent-to: #3b82f6;
+      --color-primary-text: #083344;
+      --color-badge-bg: rgba(6, 182, 212, 0.12);
+      --color-badge-border: rgba(6, 182, 212, 0.25);
+    }
+    [data-theme="rose"] {
+      --color-primary: #f43f5e;
+      --color-primary-hover: #e11d48;
+      --color-glow: rgba(244, 63, 94, 0.20);
+      --color-accent-from: #f43f5e;
+      --color-accent-to: #fb923c;
+      --color-primary-text: #4c0519;
+      --color-badge-bg: rgba(244, 63, 94, 0.12);
+      --color-badge-border: rgba(244, 63, 94, 0.25);
+    }
+    [data-theme="amber"] {
+      --color-primary: #f59e0b;
+      --color-primary-hover: #d97706;
+      --color-glow: rgba(245, 158, 11, 0.20);
+      --color-accent-from: #f59e0b;
+      --color-accent-to: #ef4444;
+      --color-primary-text: #451a03;
+      --color-badge-bg: rgba(245, 158, 11, 0.12);
+      --color-badge-border: rgba(245, 158, 11, 0.25);
+    }
+    .animated-grid {
+      background-size: 40px 40px;
+      background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+      position: relative;
+    }
+    .light-scanner {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: radial-gradient(circle 240px at var(--mouse-x, 50%) var(--mouse-y, 50%), var(--color-glow), transparent 70%);
+      pointer-events: none;
+      transition: background 0.15s ease-out;
+      z-index: 0;
+    }
+    .grid-laser-h {
+      position: absolute;
+      left: 0; right: 0; height: 1.5px;
+      background: linear-gradient(90deg, transparent, var(--color-primary), transparent);
+      box-shadow: 0 0 10px var(--color-primary);
+      opacity: 0.35;
+      pointer-events: none;
+      z-index: 0;
+      animation: scanLaserH 9s ease-in-out infinite alternate;
+    }
+    .grid-laser-v {
+      position: absolute;
+      top: 0; bottom: 0; width: 1.5px;
+      background: linear-gradient(180deg, transparent, var(--color-primary), transparent);
+      box-shadow: 0 0 10px var(--color-primary);
+      opacity: 0.35;
+      pointer-events: none;
+      z-index: 0;
+      animation: scanLaserV 12s ease-in-out infinite alternate;
+    }
+    @keyframes scanLaserH {
+      0% { top: 8%; opacity: 0.2; }
+      50% { opacity: 0.5; }
+      100% { top: 92%; opacity: 0.2; }
+    }
+    @keyframes scanLaserV {
+      0% { left: 12%; opacity: 0.2; }
+      50% { opacity: 0.5; }
+      100% { left: 88%; opacity: 0.2; }
+    }
+    .btn-themed {
+      background: linear-gradient(135deg, var(--color-accent-from), var(--color-accent-to));
+      color: var(--color-primary-text);
+      box-shadow: 0 4px 18px var(--color-glow);
+    }
+    .btn-themed:hover { filter: brightness(1.08); box-shadow: 0 6px 24px var(--color-glow); }
+    .badge-themed {
+      background: var(--color-badge-bg);
+      border: 1px solid var(--color-badge-border);
+      color: var(--color-primary);
+    }
+    .input-themed:focus {
+      border-color: var(--color-primary) !important;
+      box-shadow: 0 0 0 2px var(--color-glow) !important;
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.2); border-radius: 9999px; }
+  </style>
+</head>
+<body class="h-full flex flex-col bg-slate-950 text-slate-100 font-sans overflow-hidden" onmousemove="updateMouseGlow(event)">
+
+  <!-- ================= NOTIFICATION TOAST ================= -->
+  <div id="toast" class="fixed top-5 right-5 z-[100] transform translate-y-[-150%] opacity-0 transition-all duration-300 pointer-events-none flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-2xl backdrop-blur-xl text-xs font-semibold"></div>
+
+  <!-- ================= BARRE SUPÉRIEURE DE L'APPLICATION ================= -->
+  <header class="h-14 border-b border-slate-800 bg-slate-950/90 backdrop-blur-md px-4 flex items-center justify-between z-20 flex-shrink-0 text-xs">
+    <div class="flex items-center gap-3">
+      <!-- Bouton Menu Burger Mobile -->
+      <button onclick="toggleMobileSidebar()" class="md:hidden p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+
+      <div class="flex items-center gap-2">
+        <div class="w-2.5 h-2.5 rounded-full" style="background-color: var(--color-primary);"></div>
+        <span class="font-extrabold text-white text-sm">Aegis Messenger</span>
+        <span class="text-[10px] text-slate-400 font-mono hidden md:inline">&middot; E2EE Actif</span>
+      </div>
+    </div>
+
+    <!-- Actions & Profil -->
+    <div class="flex items-center gap-2.5">
+      <!-- Sélecteur de Couleurs -->
+      <div class="flex items-center gap-1.5 bg-slate-900/90 border border-slate-800 px-2.5 py-1 rounded-xl">
+        <button onclick="setTheme('emerald')" title="Émeraude Matrix" class="w-4 h-4 rounded-full bg-emerald-500 hover:scale-125 transition"></button>
+        <button onclick="setTheme('violet')" title="Cyber Violet" class="w-4 h-4 rounded-full bg-indigo-500 hover:scale-125 transition"></button>
+        <button onclick="setTheme('cyan')" title="Cyan Cobalt" class="w-4 h-4 rounded-full bg-cyan-400 hover:scale-125 transition"></button>
+        <button onclick="setTheme('rose')" title="Sunset Néon" class="w-4 h-4 rounded-full bg-rose-500 hover:scale-125 transition"></button>
+        <button onclick="setTheme('amber')" title="Ambre Solaire" class="w-4 h-4 rounded-full bg-amber-500 hover:scale-125 transition"></button>
+      </div>
+
+      <!-- Lien vers la page d'accueil / infos -->
+      <a href="/" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-slate-300 font-medium flex items-center gap-1.5 transition">
+        <span>Accueil & Infos</span>
+      </a>
+
+      <!-- Bouton Sniffer (Eve) -->
+      <button onclick="openSnifferModal()" class="px-3 py-1.5 bg-rose-950/40 hover:bg-rose-950/80 border border-rose-800/50 text-rose-300 font-bold rounded-xl flex items-center gap-1.5 transition">
+        <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+        <span class="hidden sm:inline">Sniffer (Eve)</span>
+      </button>
+
+      <!-- Déconnexion -->
+      <button onclick="handleLogout()" title="Se déconnecter" class="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-xl transition">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ================= CORPS DE L'APPLICATION ================= -->
+  <div class="flex-1 flex overflow-hidden relative">
+    
+    <!-- BARRE LATÉRALE (SALONS) -->
+    <aside id="sidebar" class="fixed inset-y-14 left-0 z-30 w-80 md:w-84 bg-slate-900/95 border-r border-slate-800 flex flex-col backdrop-blur-2xl transition-transform duration-300 transform -translate-x-full md:relative md:inset-y-0 md:translate-x-0">
+      
+      <!-- Profil Utilisateur Actif -->
+      <div class="p-3.5 border-b border-slate-800 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2.5 overflow-hidden">
+          <div id="userAvatar" class="w-9 h-9 rounded-2xl font-black text-xs flex items-center justify-center shadow-md flex-shrink-0" style="background: linear-gradient(135deg, var(--color-accent-from), var(--color-accent-to)); color: var(--color-primary-text);"></div>
+          <div class="overflow-hidden">
+            <div class="flex items-center gap-1.5">
+              <span id="currentUserPseudo" class="font-bold text-white text-xs truncate"></span>
+              <span class="inline-flex items-center px-1.5 py-0.2 rounded-full text-[9px] font-medium badge-themed">Moi</span>
+            </div>
+            <div class="flex items-center gap-1 mt-0.5">
+              <span id="currentUserKeyPreview" class="text-[10px] font-mono text-slate-400 truncate"></span>
+              <button onclick="copyToClipboard(currentUser.public_key, 'Clé publique copiée')" title="Copier ma clé publique" class="text-slate-500 hover:text-white transition">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <button onclick="openModal('createRoomModal')" class="py-2 px-3 btn-themed font-bold rounded-xl text-xs flex items-center gap-1 transition shadow-sm">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          <span>Créer</span>
+        </button>
+      </div>
+
+      <!-- En-tête Salons -->
+      <div class="px-4 pt-3 pb-1 flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-slate-500">
+        <span>Conversations</span>
+        <span id="roomsCount" class="text-[11px] font-mono text-slate-400">0</span>
+      </div>
+
+      <!-- Liste des Salons -->
+      <div class="flex-1 overflow-y-auto p-2.5 space-y-1.5" id="roomsList">
+        <!-- Rendu dynamique -->
+      </div>
+    </aside>
+
+    <!-- Overlay sombre pour mobile -->
+    <div id="sidebarOverlay" onclick="toggleMobileSidebar()" class="fixed inset-0 bg-black/60 z-20 hidden md:hidden"></div>
+
+    <!-- ZONE PRINCIPALE DE CONVERSATION -->
+    <main class="flex-1 flex flex-col bg-slate-950 relative overflow-hidden animated-grid">
+      <!-- Faisceau curseur adouci & traits lumineux animés sur la grille -->
+      <div class="light-scanner"></div>
+      <div class="grid-laser-h"></div>
+      <div class="grid-laser-v"></div>
+
+      <!-- En-tête du salon actif -->
+      <div id="chatHeader" class="h-16 px-4 md:px-6 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md flex items-center justify-between z-10 flex-shrink-0">
+        <div class="flex items-center gap-3 overflow-hidden">
+          <div id="roomAvatar" class="w-9 h-9 rounded-xl bg-slate-800 font-bold flex items-center justify-center border border-slate-700 text-xs flex-shrink-0" style="color: var(--color-primary);">
+            #
+          </div>
+          <div class="overflow-hidden">
+            <h2 id="activeRoomName" class="font-bold text-sm md:text-base text-white truncate">Sélectionnez une conversation</h2>
+            <p id="activeRoomMembers" class="text-xs text-slate-400 truncate mt-0.5"></p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button id="btnDecryptAll" onclick="decryptAllInRoom()" title="Déchiffrer tous les messages reçus avec votre clé privée" class="hidden sm:inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 transition">
+            <span>🔓 Tout déchiffrer</span>
+          </button>
+          <button id="btnLockAll" onclick="lockAllInRoom()" title="Re-verrouiller tous les messages en état chiffré" class="hidden sm:inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-white transition">
+            <span>🔒 Tout verrouiller</span>
+          </button>
+          <div id="securityBadge" class="hidden items-center gap-2 text-xs badge-themed px-3 py-1.5 rounded-full font-medium shadow-sm">
+            <span class="w-2 h-2 rounded-full animate-ping" style="background-color: var(--color-primary);"></span>
+            <span class="hidden sm:inline">Zero-Knowledge &middot; E2EE Actif</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Fil des Messages -->
+      <div id="messagesContainer" class="flex-1 overflow-y-auto px-4 md:px-6 py-6 space-y-4">
+        <div class="h-full flex flex-col items-center justify-center text-center p-8 max-w-sm mx-auto text-slate-500">
+          <div class="w-14 h-14 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center mb-3" style="color: var(--color-primary);">
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+          </div>
+          <h3 class="text-sm font-semibold text-slate-300">Aucun message sélectionné</h3>
+          <p class="text-xs text-slate-500 mt-1">Choisissez un salon à gauche ou créez-en un nouveau.</p>
+        </div>
+      </div>
+
+      <!-- Barre de Saisie avec le Bouton "Envoyer" et l'Icône Avion -->
+      <div id="chatInputArea" class="hidden p-3 md:p-4 border-t border-slate-800 bg-slate-900/90 backdrop-blur-xl z-10 flex-shrink-0">
+        <form onsubmit="handleSendMessage(event)" class="max-w-4xl mx-auto flex items-center gap-2 md:gap-3">
+          <div class="relative flex-1">
+            <input type="text" id="messageInput" required autocomplete="off" placeholder="Écrire un message chiffré de bout en bout..." class="input-themed w-full bg-slate-950 border border-slate-800 rounded-2xl pl-10 pr-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none transition shadow-inner">
+            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none" style="color: var(--color-primary);">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+            </div>
+          </div>
+          
+          <!-- Bouton d'Envoi avec Libellé et Icône Avion d'Envoi -->
+          <button type="submit" id="sendBtn" class="btn-themed font-bold px-5 md:px-6 py-3 rounded-2xl text-sm transition flex items-center gap-2 flex-shrink-0 active:scale-[0.98]">
+            <span>Envoyer</span>
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+            </svg>
+          </button>
+        </form>
+      </div>
+    </main>
+  </div>
+
+  <!-- ================= MODAL CRÉATION DE SALON ================= -->
+  <div id="createRoomModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-3xl p-6 shadow-2xl relative">
+      <div class="flex justify-between items-center mb-4 pb-3 border-b border-slate-800">
+        <h3 class="font-bold text-base text-white">Créer une conversation</h3>
+        <button onclick="closeModal('createRoomModal')" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white">✕</button>
+      </div>
+
+      <form onsubmit="handleCreateRoom(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Nom du salon</label>
+          <input type="text" id="newRoomName" required placeholder="ex: Groupe d'étude, Secret..." class="input-themed w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Participants autorisés</label>
+          <div id="usersCheckboxList" class="max-h-52 overflow-y-auto space-y-1 bg-slate-950/70 p-3 rounded-2xl border border-slate-800">
+            <!-- Rendu dynamique -->
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" onclick="closeModal('createRoomModal')" class="px-4 py-2 text-xs text-slate-400 hover:text-white">Annuler</button>
+          <button type="submit" class="px-5 py-2.5 btn-themed font-bold text-xs rounded-xl transition">Créer le salon</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= MODAL SNIFFER D'EVE (PAGINÉ 5 / 10) ================= -->
+  <div id="snifferModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-rose-900/50 w-full max-w-5xl rounded-3xl p-5 md:p-6 shadow-2xl flex flex-col max-h-[92vh]">
+      
+      <!-- En-tête Sniffer -->
+      <div class="flex justify-between items-center pb-3 border-b border-rose-900/40">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-2xl bg-rose-500/10 text-rose-400 flex items-center justify-center border border-rose-500/20">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+          </div>
+          <div>
+            <h3 class="font-extrabold text-base md:text-lg text-rose-300">Console d'Interception d'Eve &middot; Sniffer SQLite</h3>
+            <p class="text-xs text-slate-400">Lecture directe de la base de données : seules les enveloppes chiffrées sont stockées.</p>
+          </div>
+        </div>
+        <button onclick="closeModal('snifferModal')" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white">✕</button>
+      </div>
+
+      <!-- Bandeau pédagogique crypto -->
+      <div class="my-3 p-3 bg-rose-950/20 border border-rose-900/40 rounded-2xl text-xs text-rose-200/90 flex items-center gap-2.5">
+        <span class="text-lg">🛡️</span>
+        <span class="leading-relaxed"><strong>Sécurité Zero-Knowledge :</strong> Le serveur ne voit que $c_1$ et $c_2$. Aucun message clair ne transite ou n'est persisté.</span>
+      </div>
+
+      <!-- Barre de Pagination -->
+      <div class="mb-3 flex flex-wrap items-center justify-between gap-3 text-xs bg-slate-950/60 p-2.5 rounded-xl border border-slate-800">
+        <div class="flex items-center gap-2">
+          <span class="text-slate-400">Éléments par page :</span>
+          <select id="snifferPageSize" onchange="changeSnifferPageSize(this.value)" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-white font-semibold focus:outline-none">
+            <option value="5">5 éléments</option>
+            <option value="10" selected>10 éléments</option>
+          </select>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <span id="snifferPaginationInfo" class="text-slate-400 font-mono">Page 1 / 1</span>
+          <div class="flex items-center gap-1">
+            <button id="snifferPrevBtn" onclick="prevSnifferPage()" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 disabled:opacity-40">Précédent</button>
+            <button id="snifferNextBtn" onclick="nextSnifferPage()" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 disabled:opacity-40">Suivant</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Table des Chiffrés -->
+      <div class="flex-1 overflow-auto border border-slate-800 rounded-2xl bg-slate-950/70">
+        <table class="w-full text-left text-xs font-mono">
+          <thead class="bg-slate-950 text-slate-400 border-b border-slate-800 uppercase tracking-wider text-[11px] sticky top-0">
+            <tr>
+              <th class="p-3">ID</th>
+              <th class="p-3">Salon</th>
+              <th class="p-3">Expéditeur</th>
+              <th class="p-3">Destinataire</th>
+              <th class="p-3">Composante $c_1$</th>
+              <th class="p-3">Enveloppe $c_2$</th>
+              <th class="p-3 text-center">Action</th>
+            </tr>
+          </thead>
+          <tbody id="snifferTableBody" class="divide-y divide-slate-800/60 text-slate-300">
+            <!-- Rendu dynamique paginé -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Footer Modal Sniffer -->
+      <div class="pt-3 flex justify-between items-center text-xs">
+        <span id="snifferTotalCount" class="text-[11px] text-slate-500 font-mono">0 enregistrement(s) trouvé(s)</span>
+        <button onclick="fetchSnifferData()" class="bg-rose-950 hover:bg-rose-900 border border-rose-800/60 text-rose-200 font-bold px-4 py-1.5 rounded-xl transition flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          Actualiser
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL DÉTAIL D'INSPECTION ================= -->
+  <div id="cipherDetailModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-3xl p-6 shadow-2xl relative space-y-4">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <h4 class="font-bold text-sm text-white" id="cipherDetailTitle">Inspection du Chiffré</h4>
+        <button onclick="closeModal('cipherDetailModal')" class="text-slate-400 hover:text-white">✕</button>
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-slate-400 mb-1">Composante $c_1$ ($g^k \pmod p$) :</label>
+        <textarea id="cipherDetailC1" readonly rows="3" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs font-mono text-emerald-400 focus:outline-none"></textarea>
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-slate-400 mb-1">Enveloppe $c_2$ ($M \cdot y^k \pmod p$) :</label>
+        <textarea id="cipherDetailC2" readonly rows="4" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs font-mono text-amber-400 focus:outline-none"></textarea>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="copyToClipboard(document.getElementById('cipherDetailC2').value, 'Enveloppe c2 copiée')" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl">Copier c2</button>
+        <button onclick="closeModal('cipherDetailModal')" class="px-4 py-2 btn-themed text-xs font-bold rounded-xl">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= LOGIQUE JS & MOTEUR ELGAMAL ================= -->
+  <script>
+    let P = null;
+    let G = null;
+    let currentUser = null;
+    let currentRoom = null;
+    let refreshInterval = null;
+
+    function setTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('e2ee_theme', theme);
+      showToast(`Ambiance activée : ${theme}`);
+    }
+
+    function initTheme() {
+      const savedTheme = localStorage.getItem('e2ee_theme') || 'emerald';
+      document.documentElement.setAttribute('data-theme', savedTheme);
+    }
+
+    function updateMouseGlow(e) {
+      const x = (e.clientX / window.innerWidth) * 100;
+      const y = (e.clientY / window.innerHeight) * 100;
+      document.body.style.setProperty('--mouse-x', `${x}%`);
+      document.body.style.setProperty('--mouse-y', `${y}%`);
+    }
+
+    function toggleMobileSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      sidebar.classList.toggle('-translate-x-full');
+      overlay.classList.toggle('hidden');
+    }
+
+    // --- MOTEUR CRYPTOGRAPHIQUE ELGAMAL (BIGINT NATIFS) ---
+    function modPow(base, exp, mod) {
+      let res = 1n;
+      base = base % mod;
+      while (exp > 0n) {
+        if (exp % 2n === 1n) res = (res * base) % mod;
+        base = (base * base) % mod;
+        exp = exp / 2n;
+      }
+      return res;
+    }
+
+    function extGCD(a, b) {
+      if (a === 0n) return [b, 0n, 1n];
+      const [gcd, x1, y1] = extGCD(b % a, a);
+      const x = y1 - (b / a) * x1;
+      const y = x1;
+      return [gcd, x, y];
+    }
+
+    function modInverse(a, m) {
+      const [gcd, x] = extGCD(a, m);
+      if (gcd !== 1n) throw new Error("Inverse modulaire impossible");
+      return (x % m + m) % m;
+    }
+
+    function getRandomBigInt(min, max) {
+      const range = max - min;
+      const bytes = Math.ceil(range.toString(2).length / 8);
+      const array = new Uint8Array(bytes);
+      while (true) {
+        crypto.getRandomValues(array);
+        let hex = Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
+        let candidate = BigInt('0x' + hex);
+        if (candidate < range) return min + candidate;
+      }
+    }
+
+    function textToBigIntBlocks(text, blockSize = 64) {
+      const encoder = new TextEncoder();
+      const rawBytes = encoder.encode(text);
+      const blocks = [];
+      for (let i = 0; i < rawBytes.length; i += blockSize) {
+        const slice = rawBytes.subarray(i, i + blockSize);
+        const prefixed = new Uint8Array(slice.length + 1);
+        prefixed[0] = 0x01;
+        prefixed.set(slice, 1);
+        let hex = Array.from(prefixed).map(b => b.toString(16).padStart(2, '0')).join('');
+        blocks.push(BigInt('0x' + hex));
+      }
+      return blocks;
+    }
+
+    function bigIntBlockToText(bn) {
+      let hex = bn.toString(16);
+      if (hex.length % 2 !== 0) hex = '0' + hex;
+      const bytes = new Uint8Array(hex.length / 2);
+      for (let i = 0; i < bytes.length; i++) {
+        bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+      }
+      if (bytes[0] !== 0x01) throw new Error("Format de sentinelle invalide");
+      const dataBytes = bytes.subarray(1);
+      const decoder = new TextDecoder("utf-8");
+      return decoder.decode(dataBytes);
+    }
+
+    function encryptForRecipients(text, recipientPubKeys) {
+      const blocks = textToBigIntBlocks(text);
+      const k = getRandomBigInt(2n, P - 2n);
+      const c1 = modPow(G, k, P);
+
+      const envelopes = [];
+      for (const rec of recipientPubKeys) {
+        const y = BigInt(rec.public_key);
+        const sharedSecret = modPow(y, k, P);
+        const c2_blocks = blocks.map(m => ((m * sharedSecret) % P).toString());
+        envelopes.push({
+          recipient_id: rec.id,
+          c2_blocks: c2_blocks
+        });
+      }
+
+      return { c1: c1.toString(), envelopes };
+    }
+
+    function decryptEnvelope(c1Str, c2BlockStrs, privKey) {
+      const c1 = BigInt(c1Str);
+      const x = BigInt(privKey);
+      const sharedSecret = modPow(c1, x, P);
+      const sharedInverse = modInverse(sharedSecret, P);
+
+      let fullText = "";
+      for (const c2Str of c2BlockStrs) {
+        const c2 = BigInt(c2Str);
+        const m = (c2 * sharedInverse) % P;
+        fullText += bigIntBlockToText(m);
+      }
+      return fullText;
+    }
+
+    // --- UI ET MESSAGERIE ---
+    function showToast(message, isError = false) {
+      const toast = document.getElementById('toast');
+      toast.className = `fixed top-5 right-5 z-[100] transform transition-all duration-300 flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-2xl backdrop-blur-xl text-xs font-semibold ${
+        isError ? 'bg-rose-950/90 text-rose-200 border border-rose-800' : 'bg-slate-900/90 text-white border border-slate-700'
+      }`;
+      toast.innerHTML = `<span>${isError ? '⚠️' : '✓'}</span><span>${escapeHtml(message)}</span>`;
+      toast.style.transform = 'translateY(0)';
+      toast.style.opacity = '1';
+      setTimeout(() => {
+        toast.style.transform = 'translateY(-150%)';
+        toast.style.opacity = '0';
+      }, 3000);
+    }
+
+    function copyToClipboard(text, successMsg) {
+      navigator.clipboard.writeText(text).then(() => {
+        showToast(successMsg);
+      });
+    }
+
+    async function initCryptoParams() {
+      const res = await fetch('/api/crypto/params');
+      const data = await res.json();
+      P = BigInt(data.p);
+      G = BigInt(data.g);
+    }
+
+    function handleLogout() {
+      if (refreshInterval) clearInterval(refreshInterval);
+      localStorage.removeItem('e2ee_logged_pseudo');
+      currentUser = null;
+      currentRoom = null;
+      window.location.href = '/';
+    }
+
+    async function startDashboard() {
+      document.getElementById('currentUserPseudo').innerText = currentUser.pseudo;
+      document.getElementById('userAvatar').innerText = currentUser.pseudo.substring(0, 2).toUpperCase();
+      document.getElementById('currentUserKeyPreview').innerText = `y = ${currentUser.public_key.substring(0, 14)}...`;
+
+      await loadRooms();
+      if (refreshInterval) clearInterval(refreshInterval);
+      refreshInterval = setInterval(() => {
+        if (currentRoom) loadMessages(currentRoom.id);
+        loadRooms(false);
+      }, 3000);
+    }
+
+    async function loadRooms(reselect = true) {
+      try {
+        const res = await fetch(`/api/rooms?user_id=${currentUser.id}`);
+        const rooms = await res.json();
+        const container = document.getElementById('roomsList');
+        document.getElementById('roomsCount').innerText = rooms.length;
+        container.innerHTML = '';
+
+        if (rooms.length === 0) {
+          container.innerHTML = `<div class="p-4 text-center text-slate-500 text-xs">Aucun salon. Créez-en un avec le bouton ci-dessus.</div>`;
+          return;
+        }
+
+        rooms.forEach(r => {
+          const isActive = currentRoom && currentRoom.id === r.id;
+          const div = document.createElement('div');
+          div.className = `p-3 rounded-2xl cursor-pointer transition-all duration-200 flex items-center justify-between gap-3 ${
+            isActive 
+              ? 'bg-slate-800/90 border border-slate-700 text-white shadow-md' 
+              : 'hover:bg-slate-800/50 text-slate-300 border border-transparent'
+          }`;
+          div.onclick = () => {
+            selectRoom(r);
+            document.getElementById('sidebar').classList.add('-translate-x-full');
+            document.getElementById('sidebarOverlay').classList.add('hidden');
+          };
+          div.innerHTML = `
+            <div class="flex items-center gap-2.5 overflow-hidden">
+              <div class="w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs ${
+                isActive ? 'btn-themed' : 'bg-slate-800 text-slate-400'
+              }">#</div>
+              <div class="overflow-hidden">
+                <div class="font-semibold text-xs truncate ${isActive ? 'text-white' : 'text-slate-200'}">${escapeHtml(r.name)}</div>
+                <div class="text-[11px] text-slate-400 truncate mt-0.5">${r.members.map(m => m.pseudo).join(', ')}</div>
+              </div>
+            </div>
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-950 text-slate-400 border border-slate-800">
+              ${r.members.length}
+            </span>
+          `;
+          container.appendChild(div);
+        });
+
+        if (reselect && rooms.length > 0 && !currentRoom) {
+          selectRoom(rooms[0]);
+        }
+      } catch (err) {
+        console.error("Erreur chargement salons", err);
+      }
+    }
+
+    function selectRoom(room) {
+      currentRoom = room;
+      document.getElementById('activeRoomName').innerText = room.name;
+      document.getElementById('roomAvatar').innerText = room.name.substring(0, 2).toUpperCase();
+      document.getElementById('activeRoomMembers').innerText = `Membres : ${room.members.map(m => m.pseudo).join(', ')}`;
+      document.getElementById('securityBadge').classList.remove('hidden');
+      document.getElementById('securityBadge').classList.add('flex');
+      document.getElementById('chatInputArea').classList.remove('hidden');
+      loadRooms(false);
+      loadMessages(room.id);
+    }
+
+    // --- GESTION DU DÉCHIFFREMENT MANUEL (MODE PÉDAGOGIQUE CRYPTO) ---
+    const decryptedMessageIds = new Set();
+    let currentRoomMessages = [];
+
+    function toggleDecryptMessage(msgId) {
+      if (decryptedMessageIds.has(msgId)) {
+        decryptedMessageIds.delete(msgId);
+      } else {
+        decryptedMessageIds.add(msgId);
+        showToast(`Message #${msgId} déchiffré avec votre clé privée ElGamal !`);
+      }
+      if (currentRoom) loadMessages(currentRoom.id);
+    }
+
+    function decryptAllInRoom() {
+      currentRoomMessages.forEach(m => {
+        if (m.c2_blocks && m.c2_blocks.length > 0) {
+          decryptedMessageIds.add(m.id);
+        }
+      });
+      if (currentRoom) loadMessages(currentRoom.id);
+      showToast("Tous les messages ont été déchiffrés.");
+    }
+
+    function lockAllInRoom() {
+      decryptedMessageIds.clear();
+      if (currentRoom) loadMessages(currentRoom.id);
+      showToast("Tous les messages sont maintenant reverrouillés en chiffré.");
+    }
+
+    // --- FIL DES MESSAGES : ÉTAT CHIFFRÉ D'ABORD, DÉCHIFFREMENT EXPLICITE PAR CLIC ---
+    async function loadMessages(roomId) {
+      try {
+        const res = await fetch(`/api/rooms/${roomId}/messages?user_id=${currentUser.id}`);
+        const messages = await res.json();
+        currentRoomMessages = messages;
+        const container = document.getElementById('messagesContainer');
+        const isNearBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 100;
+
+        container.innerHTML = '';
+
+        if (messages.length === 0) {
+          container.innerHTML = `
+            <div class="h-full flex flex-col items-center justify-center text-center p-8 max-w-sm mx-auto text-slate-500">
+              <p class="text-xs font-medium text-slate-400">Canal prêt</p>
+              <p class="text-[11px] text-slate-500 mt-1">Envoyez votre premier message chiffré.</p>
+            </div>`;
+          return;
+        }
+
+        messages.forEach(msg => {
+          const isMe = msg.sender_id === currentUser.id;
+          const isDecrypted = decryptedMessageIds.has(msg.id);
+          const msgDiv = document.createElement('div');
+          msgDiv.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-lg md:max-w-xl ${isMe ? 'ml-auto' : 'mr-auto'}`;
+
+          let messageContent = '';
+          if (msg.c2_blocks && msg.c2_blocks.length > 0) {
+            if (isDecrypted) {
+              // ÉTAT DÉCHIFFRÉ (Affichage du texte clair)
+              try {
+                const plain = decryptEnvelope(msg.c1, msg.c2_blocks, currentUser.privKey);
+                messageContent = `
+                  <div class="p-3.5 rounded-2xl text-sm leading-relaxed shadow-md ${
+                    isMe 
+                      ? 'btn-themed font-medium rounded-tr-sm' 
+                      : 'bg-slate-800/95 text-slate-100 border border-slate-700/80 rounded-tl-sm'
+                  }">
+                    <div class="flex items-center justify-between gap-3 border-b border-white/10 pb-1.5 mb-2 text-[10px]">
+                      <span class="inline-flex items-center gap-1 font-bold ${isMe ? 'text-slate-950' : 'text-emerald-400'}">
+                        <span>🔓 Déchiffré avec votre clé privée</span>
+                      </span>
+                      <button onclick="toggleDecryptMessage(${msg.id})" class="text-[10px] underline opacity-75 hover:opacity-100 transition">
+                        Reverrouiller (Voir chiffré)
+                      </button>
+                    </div>
+                    <p class="whitespace-pre-wrap break-words">${escapeHtml(plain)}</p>
+                  </div>
+                `;
+              } catch (decErr) {
+                messageContent = `
+                  <div class="p-3 rounded-2xl text-xs bg-rose-950/60 border border-rose-800 text-rose-300">
+                    ⚠️ Erreur lors du calcul d'inversion modulaire avec votre clé.
+                  </div>
+                `;
+              }
+            } else {
+              // ÉTAT CHIFFRÉ D'ABORD (Opaque / Nécessite le clic du destinataire)
+              const c1Preview = msg.c1.substring(0, 18);
+              const c2Raw = JSON.stringify(msg.c2_blocks);
+              const c2Preview = c2Raw.substring(0, 24);
+
+              messageContent = `
+                <div class="p-3.5 rounded-2xl text-xs bg-slate-900/90 border border-amber-500/40 text-slate-200 shadow-xl space-y-2.5 max-w-sm md:max-w-md ${
+                  isMe ? 'rounded-tr-sm' : 'rounded-tl-sm'
+                }">
+                  <div class="flex items-center justify-between gap-2 border-b border-slate-800/80 pb-2">
+                    <div class="flex items-center gap-1.5 text-amber-400 font-bold text-[11px]">
+                      <svg class="w-3.5 h-3.5 text-amber-400 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                      </svg>
+                      <span>Message Chiffré ElGamal (Opaque)</span>
+                    </div>
+                    <span class="text-[10px] font-mono text-slate-500">Z_p*</span>
+                  </div>
+
+                  <div class="space-y-1 font-mono text-[10px] text-slate-400 bg-slate-950/80 p-2 rounded-xl border border-slate-800/80">
+                    <div class="truncate"><span class="text-emerald-400 font-semibold">c1:</span> ${c1Preview}...</div>
+                    <div class="truncate"><span class="text-amber-400 font-semibold">c2:</span> ${c2Preview}...</div>
+                  </div>
+
+                  <button onclick="toggleDecryptMessage(${msg.id})" class="w-full py-2 px-3 bg-gradient-to-r from-amber-500 to-emerald-500 hover:from-amber-400 hover:to-emerald-400 text-slate-950 font-bold rounded-xl text-xs transition shadow-md flex items-center justify-center gap-1.5 active:scale-[0.98]">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/>
+                    </svg>
+                    <span>Déchiffrer avec ma clé privée</span>
+                  </button>
+                </div>
+              `;
+            }
+          } else {
+            messageContent = `
+              <div class="p-3 rounded-2xl text-xs bg-slate-900 border border-slate-800 text-slate-500 italic">
+                🔒 Enveloppe non destinée à votre clé.
+              </div>
+            `;
+          }
+
+          msgDiv.innerHTML = `
+            <div class="text-[11px] text-slate-400 mb-1 px-1 flex items-center gap-1.5">
+              <span class="font-semibold ${isMe ? 'text-white' : 'text-slate-300'}">${escapeHtml(msg.sender_pseudo)}</span>
+              <span class="text-slate-600">&bull;</span>
+              <span class="text-slate-500">${new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+              <span title="${isDecrypted ? 'Déchiffré' : 'Chiffré'}" class="text-xs">${isDecrypted ? '🔓' : '🔒'}</span>
+            </div>
+            ${messageContent}
+          `;
+          container.appendChild(msgDiv);
+        });
+
+        if (isNearBottom) {
+          container.scrollTop = container.scrollHeight;
+        }
+      } catch (err) {
+        console.error("Erreur messages", err);
+      }
+    }
+
+    async function handleSendMessage(e) {
+      e.preventDefault();
+      const input = document.getElementById('messageInput');
+      const text = input.value.trim();
+      if (!text || !currentRoom) return;
+
+      const sendBtn = document.getElementById('sendBtn');
+      sendBtn.disabled = true;
+
+      try {
+        const { c1, envelopes } = encryptForRecipients(text, currentRoom.members);
+
+        const res = await fetch(`/api/rooms/${currentRoom.id}/messages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sender_id: currentUser.id,
+            c1: c1,
+            envelopes: envelopes
+          })
+        });
+
+        if (!res.ok) throw new Error("Échec de l'envoi");
+        const sendData = await res.json();
+        if (sendData && sendData.message_id) {
+          decryptedMessageIds.add(sendData.message_id);
+        }
+        input.value = '';
+        input.focus();
+        await loadMessages(currentRoom.id);
+        const container = document.getElementById('messagesContainer');
+        container.scrollTop = container.scrollHeight;
+      } catch (err) {
+        showToast(err.message, true);
+      } finally {
+        sendBtn.disabled = false;
+      }
+    }
+
+    async function openModal(id) {
+      if (id === 'createRoomModal') {
+        const res = await fetch('/api/users');
+        const users = await res.json();
+        const container = document.getElementById('usersCheckboxList');
+        container.innerHTML = '';
+
+        users.forEach(u => {
+          const isSelf = u.id === currentUser.id;
+          const label = document.createElement('label');
+          label.className = "flex items-center justify-between p-2 rounded-xl hover:bg-slate-900 border border-transparent hover:border-slate-800 transition cursor-pointer";
+          label.innerHTML = `
+            <div class="flex items-center gap-2">
+              <input type="checkbox" name="roomMember" value="${u.id}" ${isSelf ? 'checked' : ''} class="w-4 h-4 rounded text-emerald-500 bg-slate-950 border-slate-700">
+              <span class="text-xs font-semibold text-slate-200">${escapeHtml(u.pseudo)}</span>
+              ${isSelf ? '<span class="text-[10px] badge-themed px-1.5 py-0.2 rounded-full font-medium">Vous</span>' : ''}
+            </div>
+            <span class="text-[10px] font-mono text-slate-500">y = ${u.public_key.substring(0, 8)}...</span>
+          `;
+          container.appendChild(label);
+        });
+      }
+      document.getElementById(id).classList.remove('hidden');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.add('hidden');
+    }
+
+    async function handleCreateRoom(e) {
+      e.preventDefault();
+      const name = document.getElementById('newRoomName').value.trim();
+      const checkboxes = document.querySelectorAll('input[name="roomMember"]:checked');
+      const memberIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+
+      if (!name || memberIds.length === 0) {
+        showToast("Sélectionnez au moins un participant", true);
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/rooms', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: name,
+            created_by: currentUser.id,
+            member_ids: memberIds
+          })
+        });
+
+        if (!res.ok) throw new Error("Erreur création salon");
+        const newRoom = await res.json();
+        closeModal('createRoomModal');
+        document.getElementById('newRoomName').value = '';
+        await loadRooms();
+        selectRoom(newRoom);
+        showToast(`Salon "${newRoom.name}" créé !`);
+      } catch (err) {
+        showToast(err.message, true);
+      }
+    }
+
+    // --- SNIFFER D'EVE AVEC PAGINATION (5 / 10) ---
+    let snifferData = [];
+    let snifferPage = 1;
+    let snifferPageSize = 10;
+
+    async function openSnifferModal() {
+      openModal('snifferModal');
+      await fetchSnifferData();
+    }
+
+    async function fetchSnifferData() {
+      try {
+        const res = await fetch('/api/sniffer');
+        snifferData = await res.json();
+        snifferPage = 1;
+        renderSnifferTable();
+      } catch (err) {
+        console.error("Erreur sniffer", err);
+      }
+    }
+
+    function changeSnifferPageSize(size) {
+      snifferPageSize = parseInt(size, 10);
+      snifferPage = 1;
+      renderSnifferTable();
+    }
+
+    function prevSnifferPage() {
+      if (snifferPage > 1) {
+        snifferPage--;
+        renderSnifferTable();
+      }
+    }
+
+    function nextSnifferPage() {
+      const maxPages = Math.ceil(snifferData.length / snifferPageSize) || 1;
+      if (snifferPage < maxPages) {
+        snifferPage++;
+        renderSnifferTable();
+      }
+    }
+
+    function renderSnifferTable() {
+      const total = snifferData.length;
+      const maxPages = Math.ceil(total / snifferPageSize) || 1;
+      if (snifferPage > maxPages) snifferPage = maxPages;
+
+      document.getElementById('snifferTotalCount').innerText = `${total} enregistrement(s) trouvé(s)`;
+      document.getElementById('snifferPaginationInfo').innerText = `Page ${snifferPage} / ${maxPages}`;
+      document.getElementById('snifferPrevBtn').disabled = (snifferPage <= 1);
+      document.getElementById('snifferNextBtn').disabled = (snifferPage >= maxPages);
+
+      const startIndex = (snifferPage - 1) * snifferPageSize;
+      const pageItems = snifferData.slice(startIndex, startIndex + snifferPageSize);
+      const tbody = document.getElementById('snifferTableBody');
+      tbody.innerHTML = '';
+
+      if (pageItems.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-500">Aucun message intercepté pour le moment.</td></tr>`;
+        return;
+      }
+
+      pageItems.forEach((r, idx) => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-900/60 transition";
+        tr.innerHTML = `
+          <td class="p-3 text-slate-400 font-bold">#${r.message_id}</td>
+          <td class="p-3 text-emerald-400 font-medium">${escapeHtml(r.room_name)}</td>
+          <td class="p-3 text-slate-200">${escapeHtml(r.sender_pseudo)}</td>
+          <td class="p-3 text-indigo-300 font-medium">${escapeHtml(r.recipient_pseudo)}</td>
+          <td class="p-3 text-rose-300 font-mono text-[11px] truncate max-w-[140px]">
+            ${escapeHtml(r.c1.substring(0, 16))}...
+          </td>
+          <td class="p-3 text-amber-300 font-mono text-[11px] truncate max-w-[150px]">
+            ${escapeHtml(r.c2_blocks.substring(0, 18))}...
+          </td>
+          <td class="p-3 text-center">
+            <button onclick="inspectCipherDetail(${startIndex + idx})" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 rounded-lg text-[10px] font-sans">
+              Inspecter
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function inspectCipherDetail(index) {
+      const item = snifferData[index];
+      if (!item) return;
+      document.getElementById('cipherDetailTitle').innerText = `Message #${item.message_id} &middot; De ${item.sender_pseudo} vers ${item.recipient_pseudo}`;
+      document.getElementById('cipherDetailC1').value = item.c1;
+      document.getElementById('cipherDetailC2').value = item.c2_blocks;
+      openModal('cipherDetailModal');
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>'"]/g, 
+        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+      );
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      initTheme();
+      await initCryptoParams();
+      const savedPseudo = localStorage.getItem('e2ee_logged_pseudo');
+      if (!savedPseudo) {
+        window.location.href = '/';
+        return;
+      }
+      const priv = localStorage.getItem(`e2ee_priv_${savedPseudo}`);
+      if (!priv) {
+        window.location.href = '/';
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pseudo: savedPseudo })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          currentUser = { id: data.id, pseudo: data.pseudo, public_key: data.public_key, privKey: priv };
+          startDashboard();
+        } else {
+          window.location.href = '/';
+        }
+      } catch (e) {
+        console.warn("Erreur chargement session", e);
+      }
+    });
+  </script>
+</body>
+</html>
+

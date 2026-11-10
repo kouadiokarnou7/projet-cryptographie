@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="fr" class="h-full bg-slate-950 text-slate-100 antialiased selection:bg-brand-500/30 selection:text-brand-300">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aegis E2EE &middot; Authentification & Informations ElGamal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- KaTeX pour le rendu mathématique -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
+  <style>
+    :root {
+      --color-primary: #10b981;
+      --color-primary-hover: #059669;
+      --color-glow: rgba(16, 185, 129, 0.18);
+      --color-accent-from: #10b981;
+      --color-accent-to: #14b8a6;
+      --color-primary-text: #022c22;
+      --color-badge-bg: rgba(16, 185, 129, 0.12);
+      --color-badge-border: rgba(16, 185, 129, 0.25);
+    }
+    [data-theme="violet"] {
+      --color-primary: #8b5cf6;
+      --color-primary-hover: #7c3aed;
+      --color-glow: rgba(139, 92, 246, 0.20);
+      --color-accent-from: #8b5cf6;
+      --color-accent-to: #ec4899;
+      --color-primary-text: #2e1065;
+      --color-badge-bg: rgba(139, 92, 246, 0.12);
+      --color-badge-border: rgba(139, 92, 246, 0.25);
+    }
+    [data-theme="cyan"] {
+      --color-primary: #06b6d4;
+      --color-primary-hover: #0891b2;
+      --color-glow: rgba(6, 182, 212, 0.20);
+      --color-accent-from: #06b6d4;
+      --color-accent-to: #3b82f6;
+      --color-primary-text: #083344;
+      --color-badge-bg: rgba(6, 182, 212, 0.12);
+      --color-badge-border: rgba(6, 182, 212, 0.25);
+    }
+    [data-theme="rose"] {
+      --color-primary: #f43f5e;
+      --color-primary-hover: #e11d48;
+      --color-glow: rgba(244, 63, 94, 0.20);
+      --color-accent-from: #f43f5e;
+      --color-accent-to: #fb923c;
+      --color-primary-text: #4c0519;
+      --color-badge-bg: rgba(244, 63, 94, 0.12);
+      --color-badge-border: rgba(244, 63, 94, 0.25);
+    }
+    [data-theme="amber"] {
+      --color-primary: #f59e0b;
+      --color-primary-hover: #d97706;
+      --color-glow: rgba(245, 158, 11, 0.20);
+      --color-accent-from: #f59e0b;
+      --color-accent-to: #ef4444;
+      --color-primary-text: #451a03;
+      --color-badge-bg: rgba(245, 158, 11, 0.12);
+      --color-badge-border: rgba(245, 158, 11, 0.25);
+    }
+    .animated-grid {
+      background-size: 40px 40px;
+      background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+      position: relative;
+    }
+    /* Lumière de curseur adoucie */
+    .light-scanner {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: radial-gradient(circle 240px at var(--mouse-x, 50%) var(--mouse-y, 50%), var(--color-glow), transparent 70%);
+      pointer-events: none;
+      transition: background 0.15s ease-out;
+      z-index: 0;
+    }
+    /* Traits de lumière animés parcourant les carreaux */
+    .grid-laser-h {
+      position: fixed;
+      left: 0; right: 0; height: 1.5px;
+      background: linear-gradient(90deg, transparent, var(--color-primary), transparent);
+      box-shadow: 0 0 10px var(--color-primary);
+      opacity: 0.35;
+      pointer-events: none;
+      z-index: 0;
+      animation: scanLaserH 9s ease-in-out infinite alternate;
+    }
+    .grid-laser-v {
+      position: fixed;
+      top: 0; bottom: 0; width: 1.5px;
+      background: linear-gradient(180deg, transparent, var(--color-primary), transparent);
+      box-shadow: 0 0 10px var(--color-primary);
+      opacity: 0.35;
+      pointer-events: none;
+      z-index: 0;
+      animation: scanLaserV 12s ease-in-out infinite alternate;
+    }
+    @keyframes scanLaserH {
+      0% { top: 8%; opacity: 0.2; }
+      50% { opacity: 0.5; }
+      100% { top: 92%; opacity: 0.2; }
+    }
+    @keyframes scanLaserV {
+      0% { left: 12%; opacity: 0.2; }
+      50% { opacity: 0.5; }
+      100% { left: 88%; opacity: 0.2; }
+    }
+    @keyframes pulseGlow {
+      0%, 100% { transform: scale(1) translate(0, 0); opacity: 0.35; }
+      50% { transform: scale(1.15) translate(20px, -15px); opacity: 0.6; }
+    }
+    .animate-glow-slow { animation: pulseGlow 8s ease-in-out infinite; }
+    .btn-themed {
+      background: linear-gradient(135deg, var(--color-accent-from), var(--color-accent-to));
+      color: var(--color-primary-text);
+      box-shadow: 0 4px 18px var(--color-glow);
+    }
+    .btn-themed:hover { filter: brightness(1.08); box-shadow: 0 6px 24px var(--color-glow); }
+    .badge-themed {
+      background: var(--color-badge-bg);
+      border: 1px solid var(--color-badge-border);
+      color: var(--color-primary);
+    }
+    .input-themed:focus {
+      border-color: var(--color-primary) !important;
+      box-shadow: 0 0 0 2px var(--color-glow) !important;
+    }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.2); border-radius: 9999px; }
+  </style>
+</head>
+<body class="h-full flex flex-col bg-slate-950 text-slate-100 font-sans overflow-x-hidden animated-grid" onmousemove="updateMouseGlow(event)">
+  <!-- Faisceau curseur & traits lumineux animés sur la grille -->
+  <div class="light-scanner"></div>
+  <div class="grid-laser-h"></div>
+  <div class="grid-laser-v"></div>
+
+  <!-- Halo lumineux en arrière-plan -->
+  <div class="fixed w-[500px] h-[500px] rounded-full blur-[140px] pointer-events-none -top-24 -left-24 animate-glow-slow" style="background: var(--color-glow); z-index: 0;"></div>
+  <div class="fixed w-[450px] h-[450px] rounded-full blur-[140px] pointer-events-none -bottom-24 -right-24 animate-glow-slow" style="background: rgba(99, 102, 241, 0.25); z-index: 0;"></div>
+
+  <!-- ================= NOTIFICATION TOAST ================= -->
+  <div id="toast" class="fixed top-5 right-5 z-[100] transform translate-y-[-150%] opacity-0 transition-all duration-300 pointer-events-none flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-2xl backdrop-blur-xl text-xs font-semibold"></div>
+
+  <!-- ================= HEADER NAVIGATION ================= -->
+  <header class="border-b border-slate-800/80 bg-slate-950/85 backdrop-blur-xl sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl p-0.5 shadow-md" style="background: linear-gradient(135deg, var(--color-accent-from), var(--color-accent-to));">
+          <div class="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
+            <svg class="w-5 h-5" style="color: var(--color-primary);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+            </svg>
+          </div>
+        </div>
+        <div>
+          <span class="font-extrabold text-white text-base">Aegis E2EE</span>
+          <span class="block text-[11px] text-slate-400 font-mono">Index & Portail Cryptographique</span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <!-- Palette de couleurs lumineuses -->
+        <div class="flex items-center gap-1.5 bg-slate-900/90 border border-slate-800 px-3 py-1.5 rounded-xl">
+          <span class="text-[11px] text-slate-400 font-medium mr-1 hidden sm:inline">Ambiance :</span>
+          <button onclick="setTheme('emerald')" title="Émeraude Matrix" class="w-4 h-4 rounded-full bg-emerald-500 hover:scale-125 transition"></button>
+          <button onclick="setTheme('violet')" title="Cyber Violet" class="w-4 h-4 rounded-full bg-indigo-500 hover:scale-125 transition"></button>
+          <button onclick="setTheme('cyan')" title="Cyan Cobalt" class="w-4 h-4 rounded-full bg-cyan-400 hover:scale-125 transition"></button>
+          <button onclick="setTheme('rose')" title="Sunset Néon" class="w-4 h-4 rounded-full bg-rose-500 hover:scale-125 transition"></button>
+          <button onclick="setTheme('amber')" title="Ambre Solaire" class="w-4 h-4 rounded-full bg-amber-500 hover:scale-125 transition"></button>
+        </div>
+
+        <a href="/app" class="btn-themed font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 transition">
+          <span>Ouvrir l'App</span>
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= LAYOUT PRINCIPAL (INDEX + INFORMATIONS CÔTE À CÔTE) ================= -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 lg:p-8 relative z-10">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+      <!-- ================= COLONNE GAUCHE (5 cols) : FORMULAIRE AUTHENTIFICATION ================= -->
+      <div class="lg:col-span-5 space-y-6">
+        <div class="bg-slate-900/85 border border-slate-800/90 rounded-3xl p-6 md:p-8 shadow-2xl backdrop-blur-2xl">
+          
+          <div class="text-center mb-6">
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full badge-themed text-[11px] font-semibold mb-3">
+              <span class="w-2 h-2 rounded-full animate-pulse" style="background-color: var(--color-primary);"></span>
+              E2EE Asymétrique &middot; ElGamal $Z_p^*$
+            </span>
+            <h2 class="text-2xl font-black text-white tracking-tight">Accès Sécurisé</h2>
+            <p class="text-xs text-slate-400 mt-1">Générez ou utilisez vos clés locales pour communiquer</p>
+          </div>
+
+          <!-- Onglets Connexion / Inscription -->
+          <div class="grid grid-cols-2 p-1 bg-slate-950/70 border border-slate-800 rounded-xl mb-6">
+            <button id="tabLoginBtn" onclick="switchTab('login')" class="py-2.5 text-xs font-semibold rounded-lg transition-all duration-200 btn-themed shadow-md">
+              Connexion
+            </button>
+            <button id="tabRegisterBtn" onclick="switchTab('register')" class="py-2.5 text-xs font-semibold rounded-lg transition-all duration-200 text-slate-400 hover:text-white">
+              Inscription
+            </button>
+          </div>
+
+          <!-- Formulaire Connexion -->
+          <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-4">
+            <div>
+              <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Pseudo</label>
+              <input type="text" id="loginPseudo" required placeholder="Votre nom d'utilisateur" class="input-themed w-full bg-slate-950/70 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none transition">
+            </div>
+            
+            <div class="p-3 bg-slate-950/50 rounded-xl border border-slate-800/80 text-[11px] text-slate-400 flex items-start gap-2">
+              <svg class="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <span>Votre clé privée ElGamal sera lue depuis votre <code>localStorage</code> pour vous connecter et déchiffrer vos messages.</span>
+            </div>
+
+            <button type="submit" class="w-full py-3.5 rounded-xl font-bold text-sm btn-themed transition active:scale-[0.99] flex items-center justify-center gap-2">
+              <span>Se connecter à la Messagerie</span>
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+            </button>
+          </form>
+
+          <!-- Formulaire Inscription -->
+          <form id="registerForm" onsubmit="handleRegister(event)" class="space-y-4 hidden">
+            <div>
+              <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Pseudo</label>
+              <input type="text" id="regPseudo" required placeholder="Choisissez un identifiant" class="input-themed w-full bg-slate-950/70 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none transition">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Mot de passe</label>
+              <input type="password" id="regPassword" required placeholder="••••••••••••" class="input-themed w-full bg-slate-950/70 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none transition">
+            </div>
+
+            <div class="p-3.5 bg-slate-950/50 rounded-xl border border-slate-800/80 text-xs text-slate-300 space-y-1">
+              <p class="font-bold text-white flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full" style="background-color: var(--color-primary);"></span>
+                Génération Asymétrique ElGamal :
+              </p>
+              <p class="text-[11px] text-slate-400">• Clé privée $x$ calculée localement (jamais transmise).</p>
+              <p class="text-[11px] text-slate-400">• Clé publique $y = g^x \pmod p$ envoyée pour la PKI.</p>
+            </div>
+
+            <button type="submit" id="regSubmitBtn" class="w-full py-3.5 rounded-xl font-bold text-sm btn-themed transition active:scale-[0.99] flex items-center justify-center gap-2">
+              <span>Générer les Clés & S'inscrire</span>
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+            </button>
+          </form>
+
+          <div id="authAlert" class="mt-4 hidden p-3 rounded-xl text-xs font-medium"></div>
+
+          <!-- Si déjà connecté -->
+          <div id="alreadyLoggedBox" class="mt-6 pt-4 border-t border-slate-800/80 text-center hidden">
+            <p class="text-xs text-slate-400 mb-2">Session active détectée pour <strong id="loggedUserLabel" class="text-white"></strong></p>
+            <a href="/app" class="inline-flex items-center gap-1.5 text-xs font-bold underline hover:text-white" style="color: var(--color-primary);">
+              Accéder directement à l'espace de discussion &rarr;
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= COLONNE DROITE (7 cols) : INFORMATIONS CRYPTO À CÔTÉ ================= -->
+      <div class="lg:col-span-7 space-y-6">
+        
+        <!-- En-tête panneau d'informations -->
+        <div class="p-6 md:p-8 rounded-3xl bg-slate-900/85 border border-slate-800/90 shadow-2xl backdrop-blur-2xl space-y-6">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-black text-lg border border-emerald-500/20">
+              ℹ️
+            </div>
+            <div>
+              <h3 class="text-xl font-black text-white">Comprendre le Chiffrement ElGamal</h3>
+              <p class="text-xs text-slate-400">Toutes les informations sur la cryptographie asymétrique $Z_p^*$ et la sécurité Zero-Knowledge.</p>
+            </div>
+          </div>
+
+          <!-- Onglets d'exploration d'informations -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-semibold border-b border-slate-800 pb-3">
+            <button onclick="switchInfoTab('tab-pki')" id="btn-tab-pki" class="py-2 px-3 rounded-xl bg-slate-800 text-white border border-slate-700">1. Clés (PKI)</button>
+            <button onclick="switchInfoTab('tab-enc')" id="btn-tab-enc" class="py-2 px-3 rounded-xl text-slate-400 hover:text-white">2. Chiffrement</button>
+            <button onclick="switchInfoTab('tab-dec')" id="btn-tab-dec" class="py-2 px-3 rounded-xl text-slate-400 hover:text-white">3. Déchiffrement</button>
+            <button onclick="switchInfoTab('tab-eve')" id="btn-tab-eve" class="py-2 px-3 rounded-xl text-slate-400 hover:text-white">4. Console d'Eve</button>
+          </div>
+
+          <!-- Contenu Onglet 1 : Clés & Paramètres -->
+          <div id="content-tab-pki" class="space-y-4 text-xs leading-relaxed text-slate-300">
+            <h4 class="font-bold text-white text-sm flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full" style="background-color: var(--color-primary);"></span>
+              Paramètres Publics & Génération de Clés
+            </h4>
+            <p>
+              Le cryptosystème repose sur la difficulté du <strong>Problème du Logarithme Discret (DLP)</strong> dans le groupe multiplicatif $\mathbb{Z}_p^*$.
+            </p>
+            <div class="p-3.5 bg-slate-950/80 rounded-2xl border border-slate-800 font-mono text-[11px] text-slate-400 space-y-1">
+              <div><strong>Nombre premier sûr $p$ :</strong> MODP 1024-bit RFC 3526 (Groupe 2)</div>
+              <div><strong>Générateur $g$ :</strong> 2</div>
+            </div>
+            <ul class="space-y-1.5 list-disc pl-5 text-slate-400">
+              <li><strong class="text-slate-200">Clé Privée ($x$) :</strong> Un entier aléatoire secret $x \in [2, p-2]$ généré par le navigateur et conservé dans votre stockage local.</li>
+              <li><strong class="text-slate-200">Clé Publique ($y$) :</strong> Calculée via exponentiation modulaire rapide $y = g^x \pmod p$, puis publiée auprès du serveur.</li>
+            </ul>
+          </div>
+
+          <!-- Contenu Onglet 2 : Chiffrement Multi-Destinataires -->
+          <div id="content-tab-enc" class="space-y-4 text-xs leading-relaxed text-slate-300 hidden">
+            <h4 class="font-bold text-white text-sm flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full" style="background-color: var(--color-primary);"></span>
+              Chiffrement Côté Client (Multi-Destinataires)
+            </h4>
+            <p>
+              Pour envoyer un message à plusieurs membres d'un salon (chacun ayant sa clé publique $y_i$) :
+            </p>
+            <ol class="space-y-2 list-decimal pl-5 text-slate-400">
+              <li>Le texte est encodé en blocs d'entiers $M < p$ avec un octet de sentinelle.</li>
+              <li>L'expéditeur tire un aléa secret de session $k \in [2, p-2]$.</li>
+              <li>Il calcule la composante publique : <span class="font-mono text-emerald-400 font-bold">$c_1 = g^k \pmod p$</span>.</li>
+              <li>Pour chaque destinataire $i$, il calcule le secret partagé $s_i = y_i^k \pmod p$ et l'enveloppe :
+                <div class="font-mono text-amber-300 font-bold my-0.5">$c_{2, i} = (M \cdot s_i) \pmod p$</div>
+              </li>
+            </ol>
+            <p class="text-[11px] text-slate-500 italic">
+              Le serveur ne voit que $c_1$ et les listes de $c_{2, i}$.
+            </p>
+          </div>
+
+          <!-- Contenu Onglet 3 : Déchiffrement & Euclide Étendu -->
+          <div id="content-tab-dec" class="space-y-4 text-xs leading-relaxed text-slate-300 hidden">
+            <h4 class="font-bold text-white text-sm flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full" style="background-color: var(--color-primary);"></span>
+              Déchiffrement via l'Algorithme d'Euclide Étendu
+            </h4>
+            <p>
+              Le destinataire possédant sa clé privée $x_i$ reçoit $(c_1, c_{2, i})$ :
+            </p>
+            <ol class="space-y-2 list-decimal pl-5 text-slate-400">
+              <li>Il reconstruit le secret partagé :
+                <div class="font-mono text-emerald-400 font-bold my-0.5">$s_i = c_1^{x_i} \pmod p = (g^k)^{x_i} = y_i^k \pmod p$</div>
+              </li>
+              <li>Il calcule l'inverse modulaire $s_i^{-1} \pmod p$ par <strong>l'algorithme d'Euclide étendu</strong> ($s_i \cdot s_i^{-1} \equiv 1 \pmod p$).</li>
+              <li>Il retrouve le texte en clair exact :
+                <div class="font-mono text-cyan-300 font-bold my-0.5">$M = (c_{2, i} \cdot s_i^{-1}) \pmod p$</div>
+              </li>
+            </ol>
+          </div>
+
+          <!-- Contenu Onglet 4 : Console d'Eve & Zero-Knowledge -->
+          <div id="content-tab-eve" class="space-y-4 text-xs leading-relaxed text-slate-300 hidden">
+            <h4 class="font-bold text-rose-300 text-sm flex items-center gap-2">
+              <span>🛡️</span>
+              Pourquoi le Serveur & l'Espion Eve sont Aveugles ?
+            </h4>
+            <p>
+              Dans l'application, le bouton <strong>"Sniffer (Eve)"</strong> interroge directement la base de données SQLite.
+            </p>
+            <div class="p-3.5 bg-rose-950/20 border border-rose-900/40 rounded-2xl text-[11px] text-rose-200 space-y-1.5">
+              <p>• La base SQLite n'enregistre que des tuples $(c_1, c_2)$ de 1024 bits.</p>
+              <p>• Sans connaître $k$ ou la clé privée $x$, retrouver le message $M$ nécessite de résoudre le <em>Problème Diffie-Hellman Computationnel (CDH)</em>.</p>
+              <p>• Avec une clé de 1024 bits, la résolution par crible algébrique exigerait des millions d'années de calcul.</p>
+            </div>
+          </div>
+
+          <!-- Mini Simulateur Interactif Intégré -->
+          <div class="pt-4 border-t border-slate-800 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-white flex items-center gap-1.5">
+                <span>⚡</span>
+                Simulateur Interactif Jouet ($p=23, g=5$)
+              </span>
+              <button onclick="runMiniSim()" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-[11px] text-slate-200 font-semibold transition">
+                Exécuter le calcul
+              </button>
+            </div>
+            <div id="miniSimOutput" class="p-3 bg-slate-950/90 rounded-2xl border border-slate-800 font-mono text-[11px] text-slate-300 space-y-1">
+              Cliquez sur "Exécuter le calcul" pour voir les étapes mathématiques en direct.
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ================= SCRIPTS ================= -->
+  <script>
+    let P = null;
+    let G = null;
+
+    function setTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('e2ee_theme', theme);
+      showToast(`Ambiance activée : ${theme}`);
+    }
+
+    function initTheme() {
+      const savedTheme = localStorage.getItem('e2ee_theme') || 'emerald';
+      document.documentElement.setAttribute('data-theme', savedTheme);
+    }
+
+    function updateMouseGlow(e) {
+      const x = (e.clientX / window.innerWidth) * 100;
+      const y = (e.clientY / window.innerHeight) * 100;
+      document.body.style.setProperty('--mouse-x', `${x}%`);
+      document.body.style.setProperty('--mouse-y', `${y}%`);
+    }
+
+    function showToast(message, isError = false) {
+      const toast = document.getElementById('toast');
+      toast.className = `fixed top-5 right-5 z-[100] transform transition-all duration-300 flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-2xl backdrop-blur-xl text-xs font-semibold ${
+        isError ? 'bg-rose-950/90 text-rose-200 border border-rose-800' : 'bg-slate-900/90 text-white border border-slate-700'
+      }`;
+      toast.innerHTML = `<span>${isError ? '⚠️' : '✓'}</span><span>${message}</span>`;
+      toast.style.transform = 'translateY(0)';
+      toast.style.opacity = '1';
+      setTimeout(() => {
+        toast.style.transform = 'translateY(-150%)';
+        toast.style.opacity = '0';
+      }, 3000);
+    }
+
+    async function initCryptoParams() {
+      const res = await fetch('/api/crypto/params');
+      const data = await res.json();
+      P = BigInt(data.p);
+      G = BigInt(data.g);
+    }
+
+    function switchTab(tab) {
+      const isLogin = tab === 'login';
+      document.getElementById('loginForm').classList.toggle('hidden', !isLogin);
+      document.getElementById('registerForm').classList.toggle('hidden', isLogin);
+      document.getElementById('tabLoginBtn').className = isLogin 
+        ? "py-2.5 text-xs font-semibold rounded-lg transition-all duration-200 btn-themed shadow-md"
+        : "py-2.5 text-xs font-semibold rounded-lg transition-all duration-200 text-slate-400 hover:text-white";
+      document.getElementById('tabRegisterBtn').className = !isLogin 
+        ? "py-2.5 text-xs font-semibold rounded-lg transition-all duration-200 btn-themed shadow-md"
+        : "py-2.5 text-xs font-semibold rounded-lg transition-all duration-200 text-slate-400 hover:text-white";
+      showAlert('');
+    }
+
+    function switchInfoTab(tabId) {
+      const tabs = ['tab-pki', 'tab-enc', 'tab-dec', 'tab-eve'];
+      tabs.forEach(t => {
+        const isTarget = t === tabId;
+        document.getElementById(`content-${t}`).classList.toggle('hidden', !isTarget);
+        const btn = document.getElementById(`btn-${t}`);
+        if (isTarget) {
+          btn.className = "py-2 px-3 rounded-xl bg-slate-800 text-white border border-slate-700";
+        } else {
+          btn.className = "py-2 px-3 rounded-xl text-slate-400 hover:text-white";
+        }
+      });
+    }
+
+    function showAlert(msg, isError = false) {
+      const el = document.getElementById('authAlert');
+      if (!msg) {
+        el.classList.add('hidden');
+        return;
+      }
+      el.className = `mt-4 p-3 rounded-xl text-xs font-medium ${isError ? 'bg-rose-950/80 text-rose-200 border border-rose-800' : 'bg-slate-900 text-white border border-slate-800'}`;
+      el.innerText = msg;
+      el.classList.remove('hidden');
+    }
+
+    // Algorithmes ElGamal en JS
+    function modPow(base, exp, mod) {
+      let res = 1n;
+      base = base % mod;
+      while (exp > 0n) {
+        if (exp % 2n === 1n) res = (res * base) % mod;
+        base = (base * base) % mod;
+        exp = exp / 2n;
+      }
+      return res;
+    }
+
+    function getRandomBigInt(min, max) {
+      const range = max - min;
+      const bytes = Math.ceil(range.toString(2).length / 8);
+      const array = new Uint8Array(bytes);
+      while (true) {
+        crypto.getRandomValues(array);
+        let hex = Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
+        let candidate = BigInt('0x' + hex);
+        if (candidate < range) return min + candidate;
+      }
+    }
+
+    async function handleRegister(e) {
+      e.preventDefault();
+      const pseudo = document.getElementById('regPseudo').value.trim();
+      const password = document.getElementById('regPassword').value;
+      const submitBtn = document.getElementById('regSubmitBtn');
+
+      if (!pseudo || !password) return;
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<span>Génération de la paire de clés ElGamal...</span>`;
+
+      try {
+        if (!P || !G) await initCryptoParams();
+        const privKey = getRandomBigInt(2n, P - 2n);
+        const pubKey = modPow(G, privKey, P);
+
+        localStorage.setItem(`e2ee_priv_${pseudo}`, privKey.toString());
+
+        const res = await fetch('/api/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            pseudo: pseudo,
+            password: password,
+            public_key: pubKey.toString()
+          })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Échec de l'inscription");
+
+        localStorage.setItem('e2ee_logged_pseudo', pseudo);
+        showToast(`Inscription réussie pour ${pseudo} !`);
+        setTimeout(() => {
+          window.location.href = '/app';
+        }, 500);
+      } catch (err) {
+        showAlert(err.message, true);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `<span>Générer les Clés & S'inscrire</span>`;
+      }
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const pseudo = document.getElementById('loginPseudo').value.trim();
+      if (!pseudo) return;
+
+      try {
+        if (!P || !G) await initCryptoParams();
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pseudo: pseudo })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Utilisateur introuvable");
+
+        let privKey = localStorage.getItem(`e2ee_priv_${pseudo}`);
+        if (!privKey) {
+          privKey = prompt(`Clé privée ElGamal introuvable dans ce navigateur pour "${pseudo}".\nVeuillez coller votre clé privée :`);
+          if (!privKey) throw new Error("Clé privée requise pour déchiffrer.");
+          localStorage.setItem(`e2ee_priv_${pseudo}`, privKey.trim());
+        }
+
+        localStorage.setItem('e2ee_logged_pseudo', pseudo);
+        showToast(`Bienvenue ${pseudo} ! Redirection vers l'application...`);
+        setTimeout(() => {
+          window.location.href = '/app';
+        }, 400);
+      } catch (err) {
+        showAlert(err.message, true);
+      }
+    }
+
+    // Mini simulation mathématique
+    function runMiniSim() {
+      const p = 23n;
+      const g = 5n;
+      const m = 15n;
+      const x = 6n; // clé privée Bob
+      const y = modPow(g, x, p); // clé publique Bob : 5^6 mod 23 = 8
+      const k = 11n; // aléa Alice
+      const c1 = modPow(g, k, p); // 5^11 mod 23 = 22
+      const s = modPow(y, k, p); // 8^11 mod 23 = 2
+      const c2 = (m * s) % p; // (15 * 2) mod 23 = 7
+
+      // Déchiffrement
+      const s_recup = modPow(c1, x, p); // 22^6 mod 23 = 2
+      // Inverse de 2 mod 23 est 12 (car 2*12 = 24 = 1 mod 23)
+      const s_inv = 12n;
+      const m_recup = (c2 * s_inv) % p; // (7 * 12) = 84 = 15 mod 23
+
+      document.getElementById('miniSimOutput').innerHTML = `
+        <div class="text-emerald-400 font-bold mb-1">Calculs ElGamal pas-à-pas :</div>
+        <div>1. Clé publique Bob : y = 5^6 mod 23 = <span class="text-white font-bold">${y}</span></div>
+        <div>2. Composante Alice : c1 = 5^11 mod 23 = <span class="text-teal-400 font-bold">${c1}</span></div>
+        <div>3. Chiffré Alice : c2 = (15 * ${s}) mod 23 = <span class="text-rose-400 font-bold">${c2}</span></div>
+        <div>4. Déchiffrement Bob : M = (${c2} * ${s_inv}) mod 23 = <span class="text-emerald-400 font-bold text-xs">${m_recup}</span> (Texte clair intact !)</div>
+      `;
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      initTheme();
+      await initCryptoParams();
+      const savedPseudo = localStorage.getItem('e2ee_logged_pseudo');
+      if (savedPseudo) {
+        const box = document.getElementById('alreadyLoggedBox');
+        if (box) {
+          box.classList.remove('hidden');
+          document.getElementById('loggedUserLabel').innerText = savedPseudo;
+        }
+      }
+    });
+  </script>
+</body>
+</html>
